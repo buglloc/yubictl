@@ -1,0 +1,9 @@
+server:
+  add: 127.0.0.1:3000
+touch:
+  kind: hw
+  yubikeys:
+    - serial: 23112460
+      pin: 8
+ykman:
+  lock_ttl: 1h

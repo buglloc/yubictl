@@ -80,6 +80,9 @@ add_executable(yubictl
 
 pico_generate_pio_header(yubictl ${CMAKE_CURRENT_LIST_DIR}/ws2812.pio)
 
-target_link_libraries(yubictl pico_stdlib pico_stdio_usb hardware_pio)
+target_link_libraries(yubictl
+  pico_stdlib pico_multicore pico_stdio_usb
+  hardware_pio
+)
 
 pico_add_extra_outputs(yubictl)

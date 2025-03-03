@@ -44,7 +44,7 @@ func (c *SvcClient) Acquire(ctx context.Context) (*Yubikey, error) {
 		SetError(&serviceErr).
 		SetResult(&out).
 		ForceContentType("application/json").
-		Get("/v1/acquire")
+		Post("/v1/acquire")
 
 	if err != nil {
 		return nil, fmt.Errorf("request failed: %w", err)

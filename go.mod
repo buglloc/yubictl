@@ -3,7 +3,7 @@ module github.com/buglloc/yubictl
 go 1.24.0
 
 require (
-	github.com/buglloc/fidoctl v0.9.0
+	github.com/buglloc/fidoctl v0.9.1
 	github.com/go-resty/resty/v2 v2.16.5
 	github.com/gofiber/fiber/v2 v2.52.6
 	github.com/knadh/koanf/parsers/yaml v0.1.0

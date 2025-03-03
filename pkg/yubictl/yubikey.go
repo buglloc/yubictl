@@ -36,7 +36,7 @@ func (y *Yubikey) Touch(ctx context.Context) error {
 			ID: y.id,
 		}).
 		ForceContentType("application/json").
-		Get("/v1/touch")
+		Post("/v1/touch")
 
 	if err != nil {
 		return fmt.Errorf("request failed: %w", err)
@@ -62,7 +62,7 @@ func (y *Yubikey) Reboot(ctx context.Context) error {
 			ID: y.id,
 		}).
 		ForceContentType("application/json").
-		Get("/v1/reboot")
+		Post("/v1/reboot")
 
 	if err != nil {
 		return fmt.Errorf("request failed: %w", err)
@@ -88,7 +88,35 @@ func (y *Yubikey) Ping(ctx context.Context) error {
 			ID: y.id,
 		}).
 		ForceContentType("application/json").
-		Get("/v1/ping")
+		Post("/v1/ping")
+
+	if err != nil {
+		return fmt.Errorf("request failed: %w", err)
+	}
+
+	if !rsp.IsSuccess() {
+		if serviceErr.Code != ServiceErrorCodeNone {
+			return &serviceErr
+		}
+
+		return fmt.Errorf("request failed: non-200 status code: %s", rsp.Status())
+	}
+
+	return nil
+}
+
+func (y *Yubikey) Release(ctx context.Context) error {
+	y.cancelCtx()
+
+	var serviceErr ServiceError
+	rsp, err := y.httpc.R().
+		SetContext(ctx).
+		SetError(&serviceErr).
+		SetBody(RebootReq{
+			ID: y.id,
+		}).
+		ForceContentType("application/json").
+		Post("/v1/release")
 
 	if err != nil {
 		return fmt.Errorf("request failed: %w", err)
@@ -109,48 +137,16 @@ func (y *Yubikey) Close(ctx context.Context) error {
 	return y.Release(ctx)
 }
 
-func (y *Yubikey) Release(ctx context.Context) error {
-	y.cancelCtx()
-
-	var serviceErr ServiceError
-	rsp, err := y.httpc.R().
-		SetContext(ctx).
-		SetError(&serviceErr).
-		SetBody(RebootReq{
-			ID: y.id,
-		}).
-		ForceContentType("application/json").
-		Get("/v1/release")
-
-	if err != nil {
-		return fmt.Errorf("request failed: %w", err)
-	}
-
-	if !rsp.IsSuccess() {
-		if serviceErr.Code != ServiceErrorCodeNone {
-			return &serviceErr
-		}
-
-		return fmt.Errorf("request failed: non-200 status code: %s", rsp.Status())
-	}
-
-	return nil
-}
-
 func (y *Yubikey) pingLoop() {
 	defer close(y.closed)
 
+	ticker := time.NewTicker(y.pingTick)
 	for {
-		tonextTick := time.Until(
-			time.Now().Add(y.pingTick).Truncate(y.pingTick),
-		)
-		t := time.NewTimer(tonextTick)
-
 		select {
 		case <-y.ctx.Done():
-			t.Stop()
+			ticker.Stop()
 			return
-		case <-t.C:
+		case <-ticker.C:
 			if err := y.Ping(y.ctx); err != nil {
 				log.Error().
 					Err(err).

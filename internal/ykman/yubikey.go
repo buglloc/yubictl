@@ -11,20 +11,22 @@ import (
 type Yubikey struct {
 	dev        fidoctl.Device
 	serial     uint32
+	version    string
 	client     string
 	mu         sync.Mutex
 	lastAccess time.Time
 }
 
 func NewYubikey(dev fidoctl.Device) (*Yubikey, error) {
-	serial, err := dev.Serial()
+	cfg, err := dev.YubiConfig()
 	if err != nil {
-		return nil, fmt.Errorf("get Yubikey serial: %w", err)
+		return nil, fmt.Errorf("get Yubikey config: %w", err)
 	}
 
 	return &Yubikey{
-		dev:    dev,
-		serial: serial,
+		dev:     dev,
+		serial:  cfg.Serial(),
+		version: cfg.Version().String(),
 	}, nil
 }
 

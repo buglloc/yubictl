@@ -91,8 +91,8 @@ int main() {
     gpio_set_dir(p, GPIO_OUT);
   }
 
-  multicore_launch_core1(touch_loop);
   queue_init(&touch_queue, sizeof(uint), TOUCH_QUEUE_SIZE);
+  multicore_launch_core1(touch_loop);
 
   while (1) {
     char c = getchar();

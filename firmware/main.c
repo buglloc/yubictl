@@ -1,20 +1,29 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/types.h>
 
 #include "pico/stdlib.h"
+#include "pico/util/queue.h"
+#include "pico/multicore.h"
+
 #include "hardware/gpio.h"
 #include "hardware/pio.h"
 #include "hardware/clocks.h"
+
 #include "ws2812.pio.h"
+
 
 #define MIN_PIN          3
 #define MAX_PIN          29
 #define LED_PIN          16
 #define LED_COLOR        urgb_u32(0, 0, 0x20)
-#define TOUCH_TIMEOUT_MS 100
+#define TOUCH_TIMEOUT_MS 500
+#define TOUCH_QUEUE_SIZE 10
+
 
 static PIO led_pio;
 static uint led_sm;
+static queue_t touch_queue;
 
 static inline uint32_t urgb_u32(uint8_t r, uint8_t g, uint8_t b) {
   return
@@ -39,15 +48,20 @@ static inline void led_off() {
   pio_sm_put_blocking(led_pio, led_sm, 0);
 }
 
-static inline void touch_pin(uint gpio) {
-  led_on();
+void touch_loop() {
+  uint gpio;
+  while (1) {
+    queue_remove_blocking(&touch_queue, &gpio);
 
-  gpio_put(gpio, 0);
-  gpio_set_dir(gpio, GPIO_OUT);
-  sleep_ms(TOUCH_TIMEOUT_MS);
-  gpio_set_dir(gpio, GPIO_IN);
+    led_on();
 
-  led_off();
+    gpio_put(gpio, 1);
+    sleep_ms(TOUCH_TIMEOUT_MS);
+    gpio_put(gpio, 0);
+    sleep_ms(TOUCH_TIMEOUT_MS / 2);
+
+    led_off();
+  }
 }
 
 static inline bool is_pin_available(int gpio) {
@@ -73,8 +87,12 @@ int main() {
     }
 
     gpio_init(p);
-    gpio_set_dir(p, GPIO_IN);
+    gpio_put(p, 0);
+    gpio_set_dir(p, GPIO_OUT);
   }
+
+  multicore_launch_core1(touch_loop);
+  queue_init(&touch_queue, sizeof(uint), TOUCH_QUEUE_SIZE);
 
   while (1) {
     char c = getchar();
@@ -87,7 +105,7 @@ int main() {
           break;
         }
 
-        touch_pin(pin);
+        queue_add_blocking(&touch_queue, &pin);
         break;
       case '\n':
       case '\r':
